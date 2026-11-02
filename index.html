@@ -29,16 +29,23 @@
     <a href="https://github.com/mccode-dev/debian">mccode-dev/debian</a>.</p>
 
   <h2>Set up</h2>
-<pre>sudo -E wget -O /usr/share/keyrings/mccode-apt.gpg https://mccode-dev.github.io/debian/mccode-apt.gpg
+<pre>sudo wget -O /usr/share/keyrings/mccode-apt.gpg https://mccode-dev.github.io/debian/mccode-apt.gpg
 cd /etc/apt/sources.list.d
 sudo rm -f mccode.list   # older one-line format, replaced by mccode.sources
-sudo -E wget -O mccode.sources https://mccode-dev.github.io/debian/mccode.sources
+sudo wget -O mccode.sources https://mccode-dev.github.io/debian/mccode.sources
 sudo apt-get update</pre>
 
   <h2>Install</h2>
 <pre>sudo apt install mcstas-suite-python     # McStas
 sudo apt install mcxtrace-suite-python   # McXtrace</pre>
   <p>The newest release is installed by default; <code>apt-cache policy mcstas</code> lists the versions in the repository.</p>
+
+  <h2>Legacy releases</h2>
+  <p>The final McStas 2.x (2.7.2) and McXtrace 1.x (1.7.1) install side by side with 3.x:</p>
+<pre>sudo apt install mcstas-suite-python-legacy    # or mcstas-suite-perl-legacy
+sudo apt install mcxtrace-suite-python-legacy  # or mcxtrace-suite-perl-legacy</pre>
+  <p>Start a shell for them with <code>mcstas-2.7.2-environment</code> or <code>mcxtrace-1.7.1-environment</code>.
+    The Perl tools need <code>pgplot5</code> from Ubuntu's <i>multiverse</i> component (Debian: <i>non-free</i>).</p>
 
   <h2>Signing key</h2>
   <p>The index is signed with <code>McCode apt repository</code>, ed25519, fingerprint<br>
