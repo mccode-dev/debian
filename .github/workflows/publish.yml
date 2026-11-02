@@ -1,15 +1,22 @@
 name: publish
 
-# Adds the .deb packages built by McCode's mcstas-/mcxtrace-autobuild runs for
-# the given release tags to the flat apt repository kept as assets of the
-# "apt" release of this repo, then re-signs the index.
+# Adds the .deb packages of McCode releases (the {mcstas,mcxtrace}-debian-*.tgz
+# assets that the McCode autobuild attaches to each release) to the flat apt
+# repository kept as assets of the "apt" release of this repo, then re-signs
+# the index. Scheduled runs pick up any published release not in the index yet.
 on:
+  schedule:
+    - cron: '23 */3 * * *'
   workflow_dispatch:
     inputs:
       tags:
-        description: McCode release tags to add (space separated)
+        description: McCode release tags to add (space separated, empty = all new releases)
         required: false
-        default: v3.10.0 v3.10.1
+        default: ''
+      force:
+        description: Re-sign and run the install test even if nothing was added
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -20,6 +27,8 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.add.outputs.changed }}
     env:
       GH_TOKEN: ${{ github.token }}
       R: ${{ github.repository }}
@@ -31,6 +40,7 @@ jobs:
         run: echo "${{ secrets.APT_GPG_KEY }}" | gpg --batch --import
 
       - name: Add packages
+        id: add
         run: |
           set -eu
           gh release view apt -R $R > /dev/null 2>&1 || gh release create apt -R $R \
@@ -43,24 +53,31 @@ jobs:
             done
             if ls new/*.deb > /dev/null 2>&1; then
               echo "$1: $(ls new | wc -l) new packages"
+              CHANGED=true
               dpkg-scanpackages --multiversion new /dev/null | sed 's#^Filename: new/#Filename: ./#' >> Packages
               gh release upload apt -R $R --clobber new/*.deb
             fi
             rm -rf new
           }
+          CHANGED=${{ inputs.force || false }}
           mkdir repo && cd repo
           gh release download apt -R $R -p Packages || touch Packages
+          if [ -z "$TAGS" ]; then
+            # newest published releases whose amd64+arm64 debs of both flavors are attached
+            for tag in $(gh release list -R mccode-dev/McCode --exclude-drafts --exclude-pre-releases -L 5 --json tagName -q '.[].tagName'); do
+              grep -qx "Filename: ./mcstas-${tag#v}-deb64.deb" Packages && continue
+              n=$(gh release view $tag -R mccode-dev/McCode --json assets -q '[.assets[].name|select(test("^(mcstas|mcxtrace)-debian-(x86_64|arm64)\\.tgz$"))]|length')
+              [ "$n" = 4 ] && TAGS="$TAGS $tag" || echo "$tag: $n/4 debian archives attached so far, skipping"
+            done
+          fi
+          echo "releases to add: ${TAGS:-none}"
           for tag in $TAGS; do
             for flavor in mcstas mcxtrace; do
-              run=$(gh run list -R mccode-dev/McCode -w $flavor-autobuild.yml -b $tag -s success -L 1 --json databaseId -q '.[0].databaseId')
-              [ -n "$run" ] || { echo "::error::no successful $flavor-autobuild run for $tag"; exit 1; }
-              for plat in ubuntu-latest ubuntu-24.04-arm; do
-                gh run download $run -R mccode-dev/McCode -n $flavor-artefacts-$plat -D ../dl
-                mkdir -p new
-                for t in ../dl/$flavor-debian-*.tgz; do tar xzf $t -C new --strip-components=1 --wildcards '*.deb'; done
-                rm -rf ../dl
-                add_new "$flavor $tag $plat"
-              done
+              gh release download $tag -R mccode-dev/McCode -p "$flavor-debian-*.tgz" -D ../dl
+              mkdir -p new
+              for t in ../dl/*.tgz; do tar xzf $t -C new --strip-components=1 --wildcards '*.deb'; done
+              rm -rf ../dl
+              add_new "$flavor $tag"
             done
           done
           # Third-party dependencies not in Debian/Ubuntu at the needed version,
@@ -72,8 +89,10 @@ jobs:
             echo "$sha  $f" | sha256sum -c -
           done
           add_new upstream
+          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
 
       - name: Sign and upload index
+        if: steps.add.outputs.changed == 'true'
         working-directory: repo
         run: |
           set -eu
@@ -89,6 +108,7 @@ jobs:
   # Install check on both architectures, as a user would set it up
   test:
     needs: publish
+    if: needs.publish.outputs.changed == 'true'
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm]
