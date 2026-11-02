@@ -34,7 +34,7 @@ jobs:
         run: |
           set -eu
           gh release view apt -R $R > /dev/null 2>&1 || gh release create apt -R $R \
-            --title "apt repository" --notes "Flat apt repository, see https://mccode-dev.github.io/mccode-apt/"
+            --title "apt repository" --notes "Flat apt repository, see https://mccode-dev.github.io/debian/"
           # Index and upload the .debs in new/ that are not published yet. Asset
           # names are unique per version and arch, so a known Filename is done.
           add_new() {
@@ -96,8 +96,8 @@ jobs:
     steps:
       - run: |
           set -eux
-          sudo curl -fsSL https://mccode-dev.github.io/mccode-apt/mccode-apt.gpg -o /usr/share/keyrings/mccode-apt.gpg
-          echo "deb [signed-by=/usr/share/keyrings/mccode-apt.gpg] https://github.com/mccode-dev/mccode-apt/releases/download/apt/ ./" \
+          sudo curl -fsSL https://mccode-dev.github.io/debian/mccode-apt.gpg -o /usr/share/keyrings/mccode-apt.gpg
+          echo "deb [signed-by=/usr/share/keyrings/mccode-apt.gpg] https://github.com/mccode-dev/debian/releases/download/apt/ ./" \
             | sudo tee /etc/apt/sources.list.d/mccode.list
           sudo apt-get update
           apt-cache policy mcstas mcxtrace

@@ -25,12 +25,12 @@
   <p>Debian and Ubuntu packages of <a href="https://mccode-dev.github.io/mcstas/">McStas</a> and
     <a href="https://mccode-dev.github.io/mcxtrace/">McXtrace</a> for <b>amd64</b> and <b>arm64</b>,
     as built by the McCode release workflows, plus <a href="https://gitlab.com/soleil-data-treatment/soleil-software-projects/cif2hkl/-/releases">cif2hkl</a> from SOLEIL. The packages are stored as assets of the
-    <a href="https://github.com/mccode-dev/mccode-apt/releases/tag/apt">apt release</a> of
-    <a href="https://github.com/mccode-dev/mccode-apt">mccode-dev/mccode-apt</a>.</p>
+    <a href="https://github.com/mccode-dev/debian/releases/tag/apt">apt release</a> of
+    <a href="https://github.com/mccode-dev/debian">mccode-dev/debian</a>.</p>
 
   <h2>Set up</h2>
-<pre>sudo curl -fsSL https://mccode-dev.github.io/mccode-apt/mccode-apt.gpg -o /usr/share/keyrings/mccode-apt.gpg
-echo "deb [signed-by=/usr/share/keyrings/mccode-apt.gpg] https://github.com/mccode-dev/mccode-apt/releases/download/apt/ ./" \
+<pre>sudo curl -fsSL https://mccode-dev.github.io/debian/mccode-apt.gpg -o /usr/share/keyrings/mccode-apt.gpg
+echo "deb [signed-by=/usr/share/keyrings/mccode-apt.gpg] https://github.com/mccode-dev/debian/releases/download/apt/ ./" \
   | sudo tee /etc/apt/sources.list.d/mccode.list
 sudo apt update</pre>
 
