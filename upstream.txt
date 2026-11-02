@@ -1,5 +1,0 @@
-# Third-party .debs added to the repository as-is: <url> <sha256>
-# cif2hkl >= 1.5.1 (needed by mcstas-comps/mcxtrace-comps), from the SOLEIL release
-# https://gitlab.com/soleil-data-treatment/soleil-software-projects/cif2hkl/-/releases/v1.5.1
-https://gitlab.com/-/project/21820312/uploads/9b0687bc027732a6d52c691917bcf729/cif2hkl_1.5.1_amd64.deb b0aee026485ce17426c12eb3b66ffb3e8e729a18614e42c349c28355797533f0
-https://gitlab.com/-/project/21820312/uploads/fc0c2e0fba1d40c4400c600ea71e3d02/cif2hkl_1.5.1_arm64.deb 6b8cb23ce2dddbbb483cca4e28ac6b2f503791f9bd5e0d944d337b1e44c279df
