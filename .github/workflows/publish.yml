@@ -55,7 +55,7 @@ jobs:
               echo "$1: $(ls new | wc -l) new packages"
               CHANGED=true
               dpkg-scanpackages --multiversion new /dev/null | sed 's#^Filename: new/#Filename: ./#' >> Packages
-              gh release upload apt -R $R --clobber new/*.deb
+              [ "${2:-}" = assets ] || gh release upload apt -R $R --clobber new/*.deb  # assets: already uploaded
             fi
             rm -rf new
           }
@@ -86,7 +86,7 @@ jobs:
           for a in $(gh release view apt -R $R --json assets -q '.assets[].name|select(endswith(".deb"))'); do
             grep -qx "Filename: ./$a" Packages || gh release download apt -R $R -p "$a" -D new
           done
-          add_new hand-uploaded
+          add_new hand-uploaded assets
           # cif2hkl (>= 1.5.1 needed by the -comps packages; Ubuntu lags behind):
           # the .debs of the latest SOLEIL release, linked from its release text
           mkdir -p new
