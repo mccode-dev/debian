@@ -1,0 +1,4 @@
+Types: deb
+URIs: https://github.com/mccode-dev/debian/releases/download/apt/
+Suites: ./
+Signed-By: /usr/share/keyrings/mccode-apt.gpg

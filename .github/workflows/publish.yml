@@ -96,9 +96,9 @@ jobs:
     steps:
       - run: |
           set -eux
-          sudo curl -fsSL https://mccode-dev.github.io/debian/mccode-apt.gpg -o /usr/share/keyrings/mccode-apt.gpg
-          echo "deb [signed-by=/usr/share/keyrings/mccode-apt.gpg] https://github.com/mccode-dev/debian/releases/download/apt/ ./" \
-            | sudo tee /etc/apt/sources.list.d/mccode.list
+          sudo -E wget -O /usr/share/keyrings/mccode-apt.gpg https://mccode-dev.github.io/debian/mccode-apt.gpg
+          sudo rm -f /etc/apt/sources.list.d/mccode.list   # older one-line format, replaced by mccode.sources
+          sudo -E wget -O /etc/apt/sources.list.d/mccode.sources https://mccode-dev.github.io/debian/mccode.sources
           sudo apt-get update
           apt-cache policy mcstas mcxtrace
           sudo apt-get install -y mcstas-suite-python mcxtrace-suite-python

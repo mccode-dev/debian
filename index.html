@@ -29,10 +29,11 @@
     <a href="https://github.com/mccode-dev/debian">mccode-dev/debian</a>.</p>
 
   <h2>Set up</h2>
-<pre>sudo curl -fsSL https://mccode-dev.github.io/debian/mccode-apt.gpg -o /usr/share/keyrings/mccode-apt.gpg
-echo "deb [signed-by=/usr/share/keyrings/mccode-apt.gpg] https://github.com/mccode-dev/debian/releases/download/apt/ ./" \
-  | sudo tee /etc/apt/sources.list.d/mccode.list
-sudo apt update</pre>
+<pre>sudo -E wget -O /usr/share/keyrings/mccode-apt.gpg https://mccode-dev.github.io/debian/mccode-apt.gpg
+cd /etc/apt/sources.list.d
+sudo rm -f mccode.list   # older one-line format, replaced by mccode.sources
+sudo -E wget -O mccode.sources https://mccode-dev.github.io/debian/mccode.sources
+sudo apt-get update</pre>
 
   <h2>Install</h2>
 <pre>sudo apt install mcstas-suite-python     # McStas
@@ -42,7 +43,7 @@ sudo apt install mcxtrace-suite-python   # McXtrace</pre>
   <h2>Signing key</h2>
   <p>The index is signed with <code>McCode apt repository</code>, ed25519, fingerprint<br>
     <code>93C2 9FAE 91F3 0339 6EE1 9825 A7EA 966D EF93 C0AB</code> (expires 2029-11-01).<br>
-    <a href="mccode-apt.gpg">mccode-apt.gpg</a> (binary keyring) &middot; <a href="mccode-apt.asc">mccode-apt.asc</a> (armored)</p>
+    <a href="mccode-apt.gpg">mccode-apt.gpg</a> (binary keyring) &middot; <a href="mccode-apt.asc">mccode-apt.asc</a> (armored) &middot; <a href="mccode.sources">mccode.sources</a> (apt source)</p>
 </main>
 </body>
 </html>
