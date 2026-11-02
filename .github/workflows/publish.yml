@@ -1,0 +1,89 @@
+name: publish
+
+# Adds the .deb packages built by McCode's mcstas-/mcxtrace-autobuild runs for
+# the given release tags to the flat apt repository kept as assets of the
+# "apt" release of this repo, then re-signs the index.
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: McCode release tags to add (space separated)
+        default: v3.10.0 v3.10.1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      R: ${{ github.repository }}
+      TAGS: ${{ inputs.tags }}
+    steps:
+      - name: Import signing key
+        run: echo "${{ secrets.APT_GPG_KEY }}" | gpg --batch --import
+
+      - name: Add packages
+        run: |
+          set -eu
+          gh release view apt -R $R > /dev/null 2>&1 || gh release create apt -R $R \
+            --title "apt repository" --notes "Flat apt repository, see https://mccode-dev.github.io/mccode-apt/"
+          mkdir repo && cd repo
+          gh release download apt -R $R -p Packages || touch Packages
+          for tag in $TAGS; do
+            for flavor in mcstas mcxtrace; do
+              run=$(gh run list -R mccode-dev/McCode -w $flavor-autobuild.yml -b $tag -s success -L 1 --json databaseId -q '.[0].databaseId')
+              [ -n "$run" ] || { echo "::error::no successful $flavor-autobuild run for $tag"; exit 1; }
+              for plat in ubuntu-latest ubuntu-24.04-arm; do
+                gh run download $run -R mccode-dev/McCode -n $flavor-artefacts-$plat -D ../dl
+                mkdir -p new
+                for t in ../dl/$flavor-debian-*.tgz; do tar xzf $t -C new --strip-components=1 --wildcards '*.deb'; done
+                rm -rf ../dl
+                # asset names are unique per version and arch, so a known Filename is already published
+                for d in new/*.deb; do
+                  grep -qx "Filename: ./${d#new/}" Packages && rm $d || true
+                done
+                if ls new/*.deb > /dev/null 2>&1; then
+                  echo "$flavor $tag $plat: $(ls new | wc -l) new packages"
+                  dpkg-scanpackages --multiversion new /dev/null | sed 's#^Filename: new/#Filename: ./#' >> Packages
+                  gh release upload apt -R $R --clobber new/*.deb
+                fi
+                rm -rf new
+              done
+            done
+          done
+
+      - name: Sign and upload index
+        working-directory: repo
+        run: |
+          set -eu
+          gzip -9kf Packages
+          apt-ftparchive -o APT::FTPArchive::Release::Origin=McCode -o APT::FTPArchive::Release::Label=McCode \
+            -o APT::FTPArchive::Release::Description="McStas and McXtrace packages" release . > Release
+          gpg --batch --yes --clearsign -o InRelease Release
+          gpg --batch --yes -abs -o Release.gpg Release
+          gh release upload apt -R $R --clobber Packages Packages.gz Release InRelease Release.gpg
+          grep -c '^Package:' Packages | xargs echo "packages in index:"
+
+  # Install check on both architectures, as a user would set it up
+  test:
+    needs: publish
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: |
+          set -eux
+          sudo curl -fsSL https://mccode-dev.github.io/mccode-apt/mccode-apt.gpg -o /usr/share/keyrings/mccode-apt.gpg
+          echo "deb [signed-by=/usr/share/keyrings/mccode-apt.gpg] https://github.com/mccode-dev/mccode-apt/releases/download/apt/ ./" \
+            | sudo tee /etc/apt/sources.list.d/mccode.list
+          sudo apt-get update
+          apt-cache policy mcstas mcxtrace
+          sudo apt-get install -y mcstas-suite-python mcxtrace-suite-python
+          ls /usr/bin | grep -E '^(mc|mx)' | head -20
+          mcstas --version; mcxtrace --version
