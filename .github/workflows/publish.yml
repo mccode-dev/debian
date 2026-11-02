@@ -80,6 +80,13 @@ jobs:
               add_new "$flavor $tag"
             done
           done
+          # .debs uploaded to the apt release by hand, e.g. a fixed revision
+          # such as mcstas-suite-python_3.10.2-1_all.deb
+          mkdir -p new
+          for a in $(gh release view apt -R $R --json assets -q '.assets[].name|select(endswith(".deb"))'); do
+            grep -qx "Filename: ./$a" Packages || gh release download apt -R $R -p "$a" -D new
+          done
+          add_new hand-uploaded
           # cif2hkl (>= 1.5.1 needed by the -comps packages; Ubuntu lags behind):
           # the .debs of the latest SOLEIL release, linked from its release text
           mkdir -p new
