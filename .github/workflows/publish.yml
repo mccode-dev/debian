@@ -8,6 +8,7 @@ on:
     inputs:
       tags:
         description: McCode release tags to add (space separated)
+        required: false
         default: v3.10.0 v3.10.1
 
 permissions:
@@ -24,6 +25,8 @@ jobs:
       R: ${{ github.repository }}
       TAGS: ${{ inputs.tags }}
     steps:
+      - uses: actions/checkout@v6
+
       - name: Import signing key
         run: echo "${{ secrets.APT_GPG_KEY }}" | gpg --batch --import
 
@@ -32,6 +35,19 @@ jobs:
           set -eu
           gh release view apt -R $R > /dev/null 2>&1 || gh release create apt -R $R \
             --title "apt repository" --notes "Flat apt repository, see https://mccode-dev.github.io/mccode-apt/"
+          # Index and upload the .debs in new/ that are not published yet. Asset
+          # names are unique per version and arch, so a known Filename is done.
+          add_new() {
+            for d in new/*.deb; do
+              grep -qx "Filename: ./${d#new/}" Packages && rm $d || true
+            done
+            if ls new/*.deb > /dev/null 2>&1; then
+              echo "$1: $(ls new | wc -l) new packages"
+              dpkg-scanpackages --multiversion new /dev/null | sed 's#^Filename: new/#Filename: ./#' >> Packages
+              gh release upload apt -R $R --clobber new/*.deb
+            fi
+            rm -rf new
+          }
           mkdir repo && cd repo
           gh release download apt -R $R -p Packages || touch Packages
           for tag in $TAGS; do
@@ -43,19 +59,19 @@ jobs:
                 mkdir -p new
                 for t in ../dl/$flavor-debian-*.tgz; do tar xzf $t -C new --strip-components=1 --wildcards '*.deb'; done
                 rm -rf ../dl
-                # asset names are unique per version and arch, so a known Filename is already published
-                for d in new/*.deb; do
-                  grep -qx "Filename: ./${d#new/}" Packages && rm $d || true
-                done
-                if ls new/*.deb > /dev/null 2>&1; then
-                  echo "$flavor $tag $plat: $(ls new | wc -l) new packages"
-                  dpkg-scanpackages --multiversion new /dev/null | sed 's#^Filename: new/#Filename: ./#' >> Packages
-                  gh release upload apt -R $R --clobber new/*.deb
-                fi
-                rm -rf new
+                add_new "$flavor $tag $plat"
               done
             done
           done
+          # Third-party dependencies not in Debian/Ubuntu at the needed version,
+          # pinned by URL and sha256 in upstream.txt
+          mkdir -p new
+          grep -vE '^\s*(#|$)' ../upstream.txt | while read url sha; do
+            f=new/$(basename "$url")
+            curl -fsSL -o $f "$url"
+            echo "$sha  $f" | sha256sum -c -
+          done
+          add_new upstream
 
       - name: Sign and upload index
         working-directory: repo
