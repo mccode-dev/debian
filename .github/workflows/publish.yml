@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: write
+  actions: write  # keepalive below
 
 concurrency:
   group: publish
@@ -111,6 +112,12 @@ jobs:
           gpg --batch --yes -abs -o Release.gpg Release
           gh release upload apt -R $R --clobber Packages Packages.gz Release InRelease Release.gpg
           grep -c '^Package:' Packages | xargs echo "packages in index:"
+
+      # GitHub disables a schedule after 60 days without repository activity, and
+      # these runs commit nothing; re-enabling the workflow resets that clock
+      - name: Keep the schedule alive
+        if: always() && github.event_name == 'schedule'
+        run: gh api -X PUT repos/$R/actions/workflows/publish.yml/enable
 
   # Install check on both architectures, as a user would set it up
   test:
